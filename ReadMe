@@ -1,0 +1,8 @@
+
+Made the following changes to env CarRacing in OpenAI-Gym for better image processing:
+STATE_W = 4*96
+STATE_H = 4*96
+
+I am first trying to solve the problem by heuristic methods (standard path planning, controls), and later would use Reinforcement Learning.
+
+
