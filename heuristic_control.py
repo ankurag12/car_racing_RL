@@ -10,8 +10,8 @@ NUM_NODES_IN_PATH = 10
 SAFE_RADIUS = 50
 DES_TRAJ_NODE_IND_1 = 2
 DES_TRAJ_NODE_IND_2 = 3
-CONTROLLER_GAIN = 0.001
-TRACK_WIDTH_TO_WINDOW_WIDTH = 1/3.0
+CONTROLLER_GAIN = 0.0005
+TRACK_WIDTH_TO_WINDOW_WIDTH = 1/2.0
 
 env = gym.make('CarRacing-v0')
 env.reset()
@@ -67,6 +67,7 @@ def find_path_nodes(contour_track, width, height):
     # After that, the consecutive points are found by the least distance criteria.
     mid_nodes_sorted = np.empty([num_nodes_in_path,2],dtype=int)
     y_max = 0
+    i_max = 0
     for i, [x, y] in enumerate(mid_nodes):
         if (1 + TRACK_WIDTH_TO_WINDOW_WIDTH)*width/2 > x > (1 - TRACK_WIDTH_TO_WINDOW_WIDTH)*width/2 and y > y_max:
             y_max = y
@@ -97,7 +98,7 @@ def distance_point_from_line(line_p1, line_p2, p):
     y2 = line_p2[1]
     xp = p[0]
     yp = p[1]
-    dist = float(abs((y2 - y1)*xp - (x2 - x1)*yp + x2*y1 - y2*x1))/math.sqrt((y2 - y1)**2 + (x2 - x1)**2)
+    dist = float((y1 - y2)*xp + (x2 - x1)*yp - x2*y1 + y2*x1)/math.sqrt((y2 - y1)**2 + (x2 - x1)**2)
     return dist
 
 
@@ -187,28 +188,29 @@ def race():
 
         grafitti[car_y, car_x] = [0, 255, 0]
 
-        # TODO: Ignore nodes which are within specified radius from the car to avoid jitter in control
         num_path_nodes = path_nodes.shape[0]
         desired_traj = np.array([path_nodes[DES_TRAJ_NODE_IND_2, ], path_nodes[DES_TRAJ_NODE_IND_1, ]])
         cv2.line(grafitti, (desired_traj[0,0], desired_traj[0,1]), (desired_traj[1,0], desired_traj[1,1]), (255, 255, 255), 1)
         crosstrack_error = distance_point_from_line(desired_traj[0,:], desired_traj[1,:], car_cent)
         heading_error = math.pi/2 + math.atan2(desired_traj[0,1] - desired_traj[1,1], desired_traj[0,0] - desired_traj[1,0])
-        #print "crosstrack error", crosstrack_error, "heading error", heading_error
+        print "crosstrack error", crosstrack_error, "heading error", heading_error
 
         # Speeding law
-        speed = 0.02
+        speed = 0.05
 
         # Steering law
-        #steer = -heading_error + math.atan(CONTROLLER_GAIN * crosstrack_error / speed)
-        steer = heading_error
+        steer = heading_error + math.atan(CONTROLLER_GAIN * crosstrack_error / speed)
+        #steer = heading_error
 
-        #print "steer", steer
         cv2.imshow('frame', grafitti)
 
         observation, reward, done, info = env.step(np.array([steer, speed, 0]))
 
-        if (cv2.waitKey(1) & 0xFF == ord('q')) or done:
+        if (cv2.waitKey(1) & 0xFF == ord('q')):
             #print "track edges", track_edges
+            break
+        if done:
+            print "Reward = ", reward
             break
 
     cv2.destroyAllWindows()
